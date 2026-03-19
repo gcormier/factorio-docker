@@ -10,7 +10,6 @@ import argparse
 
 
 PLATFORMS = [
-    "linux/arm64",
     "linux/amd64",
 ]
 
@@ -31,6 +30,12 @@ def build_and_push_multiarch(build_dir, build_args, push, builder_suffix=""):
     platform = ",".join(PLATFORMS)
     create_builder(build_dir, builder_name, platform)
     build_command = ["docker", "buildx", "build", "--platform", platform, "--builder", builder_name] + build_args
+    cache_from = os.environ.get("BUILDX_CACHE_FROM")
+    cache_to = os.environ.get("BUILDX_CACHE_TO")
+    if cache_from:
+        build_command.extend(["--cache-from", cache_from])
+    if cache_to:
+        build_command.extend(["--cache-to", cache_to])
     if push:
         build_command.append("--push")
     try:
