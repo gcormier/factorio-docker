@@ -52,7 +52,7 @@ def build_singlearch(build_dir, build_args, image_type="regular"):
 def push_singlearch(tags):
     for tag in tags:
         try:
-            subprocess.run(["docker", "push", f"factoriotools/factorio:{tag}"],
+            subprocess.run(["docker", "push", f"ghcr.io/gcormier/factorio-docker:{tag}"],
                             check=True)
         except subprocess.CalledProcessError:
             print("Docker push failed")
@@ -64,7 +64,7 @@ def build_and_push(sha256, version, tags, push, multiarch, dockerfile="Dockerfil
     shutil.copytree("docker", build_dir)
     build_args = ["-f", dockerfile, "--build-arg", f"VERSION={version}", "--build-arg", f"SHA256={sha256}", "."]
     for tag in tags:
-        build_args.extend(["-t", f"factoriotools/factorio:{tag}"])
+        build_args.extend(["-t", f"ghcr.io/gcormier/factorio-docker:{tag}"])
     
     image_type = "rootless" if "rootless" in dockerfile.lower() else "regular"
     
@@ -78,11 +78,12 @@ def build_and_push(sha256, version, tags, push, multiarch, dockerfile="Dockerfil
 
 def login():
     try:
-        username = os.environ["DOCKER_USERNAME"]
-        password = os.environ["DOCKER_PASSWORD"]
-        subprocess.run(["docker", "login", "-u", username, "-p", password], check=True)
+        token = os.environ["GITHUB_TOKEN"]
+        username = os.environ.get("GITHUB_ACTOR", "github-actions")
+        subprocess.run(["docker", "login", "ghcr.io", "-u", username, "--password-stdin"],
+                        input=token.encode(), check=True)
     except KeyError:
-        print("Username and password need to be given")
+        print("GITHUB_TOKEN needs to be given")
         exit(1)
     except subprocess.CalledProcessError:
         print("Docker login failed")
