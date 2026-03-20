@@ -10,6 +10,7 @@ import argparse
 
 
 PLATFORMS = [
+    "linux/arm64",
     "linux/amd64",
 ]
 
