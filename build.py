@@ -143,16 +143,7 @@ def main():
     # Build rootless images
     if build_rootless:
         print("Building rootless images...")
-        # For rootless, only build stable and latest unless building both
-        rootless_versions = []
-        if not build_regular or args.only_stable_latest:
-            for version, buildinfo in builddata.items():
-                if "stable" in buildinfo["tags"] or "latest" in buildinfo["tags"]:
-                    rootless_versions.append((version, buildinfo))
-        else:
-            rootless_versions = versions_to_build
-            
-        for version, buildinfo in rootless_versions:
+        for version, buildinfo in versions_to_build:
             sha256 = buildinfo["sha256"]
             original_tags = buildinfo["tags"]
             rootless_tags = generate_rootless_tags(original_tags)
