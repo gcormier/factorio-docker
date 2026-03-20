@@ -2,13 +2,15 @@ name: Check Update
 
 on:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "0 */6 * * *"
   workflow_dispatch:
 
 jobs:
   check:
     runs-on: ubuntu-latest
-    if: github.event_name != 'schedule' || (github.event_name == 'schedule' && github.repository == 'factoriotools/factorio-docker')
+    permissions:
+      contents: write
+      actions: write
 
     steps:
       - name: Checkout
@@ -17,3 +19,32 @@ jobs:
       - name: Run update script
         run: ./update.sh
         shell: bash
+
+      - name: Get updated version info
+        id: versions
+        run: |
+          STABLE=$(jq -r 'to_entries | map(select(.value.tags | index("stable"))) | .[0].key' buildinfo.json)
+          EXPERIMENTAL=$(jq -r 'to_entries | map(select(.value.tags | index("latest"))) | .[0].key' buildinfo.json)
+          echo "stable=${STABLE}" >> "$GITHUB_OUTPUT"
+          echo "experimental=${EXPERIMENTAL}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        id: auto_commit
+        with:
+          commit_message: "Auto Update Factorio to stable version: ${{ steps.versions.outputs.stable }} experimental version: ${{ steps.versions.outputs.experimental }}"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
+          file_pattern: "buildinfo.json README.md docker/docker-compose.yml"
+
+      - name: Force-update latest tag
+        if: steps.auto_commit.outputs.changes_detected == 'true'
+        run: |
+          git tag -f latest
+          git push origin --tags -f
+
+      - name: Trigger Docker build
+        if: steps.auto_commit.outputs.changes_detected == 'true'
+        run: gh workflow run docker-build.yml --ref master
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
